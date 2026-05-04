@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LYRA</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#080810">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LYRA">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="assets/icons/favicon-192x192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<header>
+  <button class="burger" id="burger" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="logo">LYRA</div>
+  <div class="header-file" id="header-file">CONVERSATION VIEWER</div>
+  <button class="btn-load" id="btn-load">↑ Загрузить</button>
+  <input type="file" id="file-input" accept=".json" style="display:none">
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-label">Библиотеки</div>
+      <div id="nav-list"></div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div id="search-bar" style="display:none">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="search-input" class="search-input" placeholder="Поиск по теме, артисту, тексту...">
+        <span id="search-count" class="search-count" style="display:none"></span>
+      </div>
+    </div>
+
+    <div id="upload-screen">
+      <div class="dz-logo">LYRA</div>
+      <div class="dz-title">CONVERSATION VIEWER</div>
+      <div class="dz-sub">Загрузи JSON-файл экспорта из VRS/A<br>чтобы просматривать запросы и ответы</div>
+      <button class="btn-primary" id="btn-upload">Выбрать файл</button>
+    </div>
+
+    <div id="pairs-container" style="display:none"></div>
+  </main>
+</div>
+
+<script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
