@@ -1,5 +1,4 @@
-import { getFiles, loadFile, deleteFile, renameFile, moveFileToLib,
-         getLibraries, createLibrary, renameLibrary, deleteLibrary } from './storage.js';
+import { getFiles, loadFile, deleteFile, renameFile } from './storage.js';
 import { filterPairs } from './render.js';
 import { confirmModal, showContextMenu, toast } from './ui.js';
 
@@ -14,128 +13,15 @@ export function initSidebar(onFileSelect) {
 }
 
 // ── MAIN RENDER ──────────────────────────────────────────────
-export function renderSidebar() {
+export async function renderSidebar() {
   const navList = document.getElementById('nav-list');
   navList.innerHTML = '';
 
-  const libs  = getLibraries();
-  const files = getFiles();
+  const files = await getFiles();
 
-  // ── NEW LIBRARY BUTTON ──
-  const addLibBtn = document.createElement('button');
-  addLibBtn.className = 'btn-add-lib';
-  addLibBtn.innerHTML = '+ библиотека';
-  addLibBtn.addEventListener('click', () => {
-    const name = prompt('Название библиотеки:');
-    if (name && name.trim()) { createLibrary(name.trim()); renderSidebar(); }
+  files.forEach(f => {
+    navList.appendChild(buildFileItem(f));
   });
-  navList.appendChild(addLibBtn);
-
-  // ── LIBRARIES ──
-  libs.forEach(lib => {
-    const libFiles = files.filter(f => f.libId === lib.id);
-    const section = document.createElement('div');
-    section.className = 'lib-section';
-    section.dataset.libId = lib.id;
-
-    section.innerHTML = `
-      <div class="lib-header" data-lib-id="${lib.id}">
-        <span class="lib-arrow">▸</span>
-        <span class="lib-name" data-lib-id="${lib.id}">${esc(lib.name)}</span>
-        <span class="lib-count">${libFiles.length}</span>
-        <button class="lib-del" data-tooltip="Удалить" data-lib-id="${lib.id}">✕</button>
-      </div>
-      <div class="lib-files" id="lib-files-${lib.id}"></div>
-    `;
-
-    const libHeader = section.querySelector('.lib-header');
-    const libFilesEl = section.querySelector('.lib-files');
-
-    // collapse/expand
-    libHeader.addEventListener('click', e => {
-      if (e.target.classList.contains('lib-del')) return;
-      if (e.target.classList.contains('lib-name') && e.detail === 2) return; // dblclick handled below
-      section.classList.toggle('open');
-    });
-
-    // rename on dblclick
-    section.querySelector('.lib-name').addEventListener('dblclick', e => {
-      e.stopPropagation();
-      startRenameLib(lib.id, e.target);
-    });
-
-    // delete library
-    section.querySelector('.lib-del').addEventListener('click', async e => {
-      e.stopPropagation();
-      const ok = await confirmModal('Удалить библиотеку?', `Библиотека "${lib.name}" будет удалена. Файлы останутся в категории "Без библиотеки".`);
-      if (ok) {
-        deleteLibrary(lib.id); 
-        toast('Библиотека удалена');
-        renderSidebar();
-      }
-    });
-
-    // Right click Context Menu for Library
-    libHeader.addEventListener('contextmenu', e => {
-      showContextMenu(e, [
-        { label: 'Переименовать', action: () => startRenameLib(lib.id, section.querySelector('.lib-name')) },
-        { label: 'Удалить', danger: true, action: async () => {
-          const ok = await confirmModal('Удалить библиотеку?', `Библиотека "${lib.name}" будет удалена. Файлы останутся.`);
-          if (ok) { deleteLibrary(lib.id); toast('Библиотека удалена'); renderSidebar(); }
-        }}
-      ]);
-    });
-
-    // drag-over for dropping files
-    libFilesEl.addEventListener('dragover', e => { e.preventDefault(); section.classList.add('drag-over'); });
-    libHeader.addEventListener('dragover', e => { e.preventDefault(); section.classList.add('drag-over'); });
-    section.addEventListener('dragleave', e => {
-      if (!section.contains(e.relatedTarget)) section.classList.remove('drag-over');
-    });
-    section.addEventListener('drop', e => {
-      e.preventDefault();
-      section.classList.remove('drag-over');
-      if (_dragFileId) { moveFileToLib(_dragFileId, lib.id); _dragFileId = null; renderSidebar(); }
-    });
-
-    // render files inside lib
-    if (libFiles.length) section.classList.add('open');
-    libFiles.forEach(f => libFilesEl.appendChild(buildFileItem(f, libs)));
-
-    navList.appendChild(section);
-  });
-
-  // ── UNCATEGORIZED FILES ──
-  const uncategorized = files.filter(f => !f.libId);
-  if (uncategorized.length) {
-    const uncatSection = document.createElement('div');
-    uncatSection.className = 'lib-section uncat-section open';
-    uncatSection.innerHTML = `
-      <div class="lib-header uncat-header">
-        <span class="lib-arrow">▸</span>
-        <span class="lib-name-plain">Без библиотеки</span>
-        <span class="lib-count">${uncategorized.length}</span>
-      </div>
-      <div class="lib-files" id="lib-files-uncat"></div>
-    `;
-    uncatSection.querySelector('.lib-header').addEventListener('click', () => {
-      uncatSection.classList.toggle('open');
-    });
-
-    // drop zone for uncat
-    const uncatFiles = uncatSection.querySelector('.lib-files');
-    uncatFiles.addEventListener('dragover', e => { e.preventDefault(); uncatSection.classList.add('drag-over'); });
-    uncatSection.addEventListener('dragleave', e => {
-      if (!uncatSection.contains(e.relatedTarget)) uncatSection.classList.remove('drag-over');
-    });
-    uncatSection.addEventListener('drop', e => {
-      e.preventDefault(); uncatSection.classList.remove('drag-over');
-      if (_dragFileId) { moveFileToLib(_dragFileId, null); _dragFileId = null; renderSidebar(); }
-    });
-
-    uncategorized.forEach(f => uncatFiles.appendChild(buildFileItem(f, libs)));
-    navList.appendChild(uncatSection);
-  }
 
   // restore active file's nav
   if (_activeFileId) {
@@ -147,48 +33,29 @@ export function renderSidebar() {
 }
 
 // ── BUILD FILE ITEM ──────────────────────────────────────────
-function buildFileItem(f, libs) {
+function buildFileItem(f) {
   const item = document.createElement('div');
   item.className = 'file-item';
   item.dataset.id = f.id;
-  item.draggable = true;
+  item.dataset.search = (f.searchIndex || '').toLowerCase();
 
   item.innerHTML = `
     <div class="file-item-main" data-id="${f.id}">
-      <span class="drag-handle">⠿</span>
       <div class="file-info">
         <div class="file-name" data-id="${f.id}">${esc(f.name)}</div>
         <div class="file-meta">${f.pairCount ? f.pairCount + ' зап.' : ''}</div>
       </div>
       <div class="file-actions">
-        <div class="file-move-wrap">
-          <button class="file-act-btn" data-tooltip="Переместить" data-id="${f.id}">↗</button>
-          <div class="move-menu" id="move-menu-${f.id}">
-            ${libs.map(l => `<div class="move-item" data-file="${f.id}" data-lib="${l.id}">${esc(l.name)}</div>`).join('')}
-            ${f.libId ? `<div class="move-item move-item-uncat" data-file="${f.id}" data-lib="">Без библиотеки</div>` : ''}
-          </div>
-        </div>
         <button class="file-del" data-id="${f.id}" data-tooltip="Удалить">✕</button>
       </div>
     </div>
     <div class="file-pairs" id="pairs-nav-${f.id}" style="display:none"></div>
   `;
 
-  // drag
-  item.addEventListener('dragstart', e => {
-    _dragFileId = f.id;
-    e.dataTransfer.effectAllowed = 'move';
-    item.classList.add('dragging');
-  });
-  item.addEventListener('dragend', () => item.classList.remove('dragging'));
-
   // select file
   const mainEl = item.querySelector('.file-item-main');
   mainEl.addEventListener('click', e => {
-    if (e.target.classList.contains('file-del') ||
-        e.target.classList.contains('file-act-btn') ||
-        e.target.classList.contains('move-item') ||
-        e.target.classList.contains('drag-handle')) return;
+    if (e.target.classList.contains('file-del')) return;
     if (e.target.classList.contains('file-name') && e.detail === 2) return;
     selectFile(f.id, mainEl);
   });
@@ -204,7 +71,7 @@ function buildFileItem(f, libs) {
     e.stopPropagation();
     const ok = await confirmModal('Удалить файл?', `Файл "${f.name}" будет удален безвозвратно.`);
     if (ok) { 
-      deleteFile(f.id); 
+      await deleteFile(f.id); 
       if (_activeFileId === f.id) _activeFileId = null; 
       toast('Файл удален');
       renderSidebar(); 
@@ -213,51 +80,21 @@ function buildFileItem(f, libs) {
 
   // context menu
   mainEl.addEventListener('contextmenu', e => {
-    const moveSubmenu = libs.map(l => ({ 
-      label: `В: ${l.name}`, 
-      action: () => { moveFileToLib(f.id, l.id); toast('Перемещено'); renderSidebar(); }
-    }));
-    if (f.libId) moveSubmenu.push({ label: 'Убрать из библиотеки', action: () => { moveFileToLib(f.id, null); renderSidebar(); } });
-
     showContextMenu(e, [
       { label: 'Переименовать', action: () => startRenameFile(f.id, item.querySelector('.file-name')) },
-      ...moveSubmenu,
       'separator',
       { label: 'Удалить', danger: true, action: async () => {
-        const ok = await confirmModal('Удалить файл?', `Файл "${f.name}" будет удален.`);
-        if (ok) { deleteFile(f.id); if (_activeFileId === f.id) _activeFileId = null; toast('Файл удален'); renderSidebar(); }
+        const ok = await confirmModal('Удалить файл?', `Файл "${f.name}" будет удален безвозвратно.`);
+        if (ok) { await deleteFile(f.id); if (_activeFileId === f.id) _activeFileId = null; toast('Файл удален'); renderSidebar(); }
       }}
     ]);
   });
-
-  // move menu
-  const moveBtn = item.querySelector('.file-act-btn');
-  const moveMenu = item.querySelector('.move-menu');
-  moveBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    // close all other menus
-    document.querySelectorAll('.move-menu.open').forEach(m => { if (m !== moveMenu) m.classList.remove('open'); });
-    moveMenu.classList.toggle('open');
-  });
-
-  item.querySelectorAll('.move-item').forEach(mi => {
-    mi.addEventListener('click', e => {
-      e.stopPropagation();
-      const libId = mi.dataset.lib || null;
-      moveFileToLib(mi.dataset.file, libId);
-      moveMenu.classList.remove('open');
-      renderSidebar();
-    });
-  });
-
-  // close move menu on outside click
-  document.addEventListener('click', () => moveMenu.classList.remove('open'), { once: false, capture: false });
 
   return item;
 }
 
 // ── SELECT FILE ──────────────────────────────────────────────
-function selectFile(id, mainEl) {
+async function selectFile(id, mainEl) {
   document.querySelectorAll('.file-item-main').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.file-pairs').forEach(el => el.style.display = 'none');
   mainEl.classList.add('active');
@@ -266,7 +103,7 @@ function selectFile(id, mainEl) {
   const pairsNav = document.getElementById(`pairs-nav-${id}`);
   if (pairsNav) pairsNav.style.display = 'block';
 
-  const saved = loadFile(id);
+  const saved = await loadFile(id);
   if (saved && _onFileSelect) _onFileSelect(saved.data, saved.name, id);
 }
 
@@ -279,9 +116,9 @@ function startRenameFile(id, el) {
   el.replaceWith(input);
   input.focus(); input.select();
 
-  const commit = () => {
+  const commit = async () => {
     const val = input.value.trim() || orig;
-    renameFile(id, val);
+    await renameFile(id, val);
     renderSidebar();
   };
   input.addEventListener('blur', commit);
@@ -291,26 +128,7 @@ function startRenameFile(id, el) {
   });
 }
 
-// ── RENAME LIBRARY ───────────────────────────────────────────
-function startRenameLib(id, el) {
-  const orig = el.textContent;
-  const input = document.createElement('input');
-  input.className = 'rename-input';
-  input.value = orig;
-  el.replaceWith(input);
-  input.focus(); input.select();
 
-  const commit = () => {
-    const val = input.value.trim() || orig;
-    renameLibrary(id, val);
-    renderSidebar();
-  };
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { input.value = orig; commit(); }
-  });
-}
 
 // ── NAV / OBSERVER ───────────────────────────────────────────
 export function buildNav(pairs, fileId) {
@@ -382,6 +200,21 @@ export function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('burger').classList.remove('open');
   document.getElementById('overlay').classList.remove('visible');
+}
+
+export function filterSidebarFiles(q) {
+  const query = (q || '').toLowerCase();
+  let visibleCount = 0;
+  document.querySelectorAll('.file-item').forEach(el => {
+    const text = el.dataset.search || '';
+    if (!query || text.includes(query)) {
+      el.style.display = '';
+      visibleCount++;
+    } else {
+      el.style.display = 'none';
+    }
+  });
+  return visibleCount;
 }
 
 // export for app.js

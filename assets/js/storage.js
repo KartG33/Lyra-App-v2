@@ -1,112 +1,202 @@
-const DB_KEY  = 'lyra_files_v3';
-const LIB_KEY = 'lyra_libs_v1';
+import { parseUser } from './parser.js';
 
-// ── DB HELPERS ───────────────────────────────────────────────
-function getDB() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
-  catch { return []; }
-}
-function saveDB(db) {
-  try { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
-  catch(e) { console.warn('LYRA storage:', e); }
+const DB_NAME = 'LyraDB';
+const STORE_NAME = 'files';
+const DB_VERSION = 1;
+
+let dbPromise = null;
+
+export function initDB() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          store.createIndex('savedAt', 'savedAt', { unique: false });
+        }
+      };
+      
+      request.onsuccess = async (e) => {
+        const db = e.target.result;
+        // Check local storage migration
+        try {
+          const oldDb = JSON.parse(localStorage.getItem('lyra_files_v3') || '[]');
+          if (oldDb.length > 0) {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            for (const f of oldDb) {
+              store.put({
+                id: f.id,
+                name: f.name,
+                data: f.data,
+                savedAt: f.savedAt || Date.now(),
+                pairCount: f.pairCount || 0,
+                searchIndex: (f.name + ' ' + f.data).toLowerCase()
+              });
+            }
+            await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+            localStorage.removeItem('lyra_files_v3');
+          }
+        } catch(err) {
+          console.warn('Migration error', err);
+        }
+        resolve(db);
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+  return dbPromise;
 }
 
-function getLibDB() {
-  try { return JSON.parse(localStorage.getItem(LIB_KEY) || '[]'); }
-  catch { return []; }
-}
-function saveLibDB(db) {
-  try { localStorage.setItem(LIB_KEY, JSON.stringify(db)); }
-  catch(e) { console.warn('LYRA lib storage:', e); }
-}
-
-// ── AUTO NAME ────────────────────────────────────────────────
-function autoName(jsonData) {
-  // Try exportedAt first, then current date
-  let d;
+// ── AUTO NAME & INDEX ────────────────────────────────────────
+function processJsonData(jsonData) {
+  let dateStr = '';
+  let artists = new Set();
+  let searchParts = [];
+  
   try {
     const parsed = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-    d = parsed.exportedAt ? new Date(parsed.exportedAt) : new Date();
-  } catch { d = new Date(); }
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  const yyyy = d.getFullYear();
-  return `${dd}.${mm}.${yyyy}`;
+    const d = parsed.exportedAt ? new Date(parsed.exportedAt) : new Date();
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    dateStr = `${dd}.${mm}`;
+    
+    if (parsed.messages) {
+      for (let i = 0; i < parsed.messages.length; i++) {
+        const m = parsed.messages[i];
+        if (m.role === 'user') {
+          const u = parseUser(m.content);
+          if (u.artist_name) artists.add(u.artist_name);
+          searchParts.push(u.artist_name || '');
+          searchParts.push(u.core_theme || '');
+        } else if (m.role === 'assistant') {
+          searchParts.push(m.content.slice(0, 300));
+        }
+      }
+    }
+  } catch (e) {
+    const d = new Date();
+    dateStr = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  const artistArr = Array.from(artists).filter(Boolean).slice(0, 2);
+  let name = artistArr.length > 0 ? `${artistArr.join(', ')} (${dateStr})` : dateStr;
+  
+  return { 
+    name, 
+    searchIndex: searchParts.join(' ').toLowerCase() 
+  };
 }
 
 // ── FILES API ────────────────────────────────────────────────
-export function saveFile(jsonStr, _originalFilename, pairCount) {
-  const db = getDB();
-  const name = autoName(jsonStr);
-  // allow duplicates by date — add suffix if needed
+export async function saveFile(jsonStr, _originalFilename, pairCount) {
+  const db = await initDB();
+  const { name, searchIndex } = processJsonData(jsonStr);
+  
+  // ensure unique name
   let finalName = name;
   let suffix = 2;
-  while (db.find(f => f.name === finalName)) {
+  
+  const existingFiles = await getFiles();
+  while (existingFiles.find(f => f.name === finalName)) {
     finalName = `${name} (${suffix++})`;
   }
+  
   const id = 'f_' + Date.now();
-  db.unshift({ id, name: finalName, data: jsonStr, savedAt: Date.now(), pairCount: pairCount || 0, libId: null });
-  saveDB(db);
-  return id;
+  const fileObj = {
+    id,
+    name: finalName,
+    data: jsonStr,
+    savedAt: Date.now(),
+    pairCount: pairCount || 0,
+    searchIndex: finalName.toLowerCase() + ' ' + searchIndex
+  };
+  
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(fileObj);
+    tx.oncomplete = () => resolve(id);
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export function getFiles() {
-  return getDB().map(({ id, name, savedAt, pairCount, libId }) => ({ id, name, savedAt, pairCount: pairCount||0, libId: libId||null }));
+export async function getFiles() {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const index = store.index('savedAt');
+    const request = index.getAll();
+    
+    request.onsuccess = () => {
+      // IndexedDB getAll from index returns sorted by savedAt ascending. We want descending.
+      const files = request.result.reverse().map(f => ({
+        id: f.id,
+        name: f.name,
+        savedAt: f.savedAt,
+        pairCount: f.pairCount || 0,
+        searchIndex: f.searchIndex || ''
+      }));
+      resolve(files);
+    };
+    request.onerror = () => reject(request.error);
+  });
 }
 
-export function loadFile(id) {
-  const f = getDB().find(f => f.id === id);
-  if (!f) return null;
-  try { return { data: JSON.parse(f.data), name: f.name }; }
-  catch { return null; }
+export async function loadFile(id) {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const request = tx.objectStore(STORE_NAME).get(id);
+    request.onsuccess = () => {
+      const f = request.result;
+      if (!f) return resolve(null);
+      try {
+        resolve({ data: JSON.parse(f.data), name: f.name });
+      } catch {
+        resolve(null);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
 }
 
-export function deleteFile(id) {
-  saveDB(getDB().filter(f => f.id !== id));
+export async function deleteFile(id) {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export function renameFile(id, newName) {
-  const db = getDB();
-  const f = db.find(f => f.id === id);
-  if (f) { f.name = newName; saveDB(db); }
+export async function renameFile(id, newName) {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const getReq = store.get(id);
+    
+    getReq.onsuccess = () => {
+      const f = getReq.result;
+      if (f) {
+        f.name = newName;
+        store.put(f);
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export function moveFileToLib(fileId, libId) {
-  const db = getDB();
-  const f = db.find(f => f.id === fileId);
-  if (f) { f.libId = libId || null; saveDB(db); }
+export async function getLastFileId() {
+  const files = await getFiles();
+  return files.length > 0 ? files[0].id : null;
 }
 
-export function getLastFileId() {
-  const db = getDB();
-  return db.length ? db[0].id : null;
-}
-
-// ── LIBRARIES API ────────────────────────────────────────────
-export function getLibraries() {
-  return getLibDB();
-}
-
-export function createLibrary(name) {
-  const db = getLibDB();
-  const id = 'lib_' + Date.now();
-  db.push({ id, name, createdAt: Date.now() });
-  saveLibDB(db);
-  return id;
-}
-
-export function renameLibrary(id, newName) {
-  const db = getLibDB();
-  const lib = db.find(l => l.id === id);
-  if (lib) { lib.name = newName; saveLibDB(db); }
-}
-
-export function deleteLibrary(id) {
-  // unassign files from this library
-  const db = getDB();
-  db.forEach(f => { if (f.libId === id) f.libId = null; });
-  saveDB(db);
-  saveLibDB(getLibDB().filter(l => l.id !== id));
-}
-
-export function loadSaved() { return null; }
+export async function loadSaved() { return null; }

@@ -34,19 +34,18 @@
 <div class="layout">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-inner">
-      <div class="sidebar-label">Библиотеки</div>
+      <div id="search-bar">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="search-input" class="search-input" placeholder="Поиск...">
+          <span id="search-count" class="search-count" style="display:none"></span>
+        </div>
+      </div>
       <div id="nav-list"></div>
     </div>
   </nav>
 
-  <main class="main">
-    <div id="search-bar" style="display:none">
-      <div class="search-wrap">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="search-input" class="search-input" placeholder="Поиск по теме, артисту, тексту...">
-        <span id="search-count" class="search-count" style="display:none"></span>
-      </div>
-    </div>
+
 
     <div id="upload-screen">
       <div class="dz-logo">LYRA</div>

@@ -1,5 +1,5 @@
 import { renderPairs, filterPairs } from './render.js';
-import { buildNav, initObserver, toggleSidebar, closeSidebar, initSidebar, renderFileList } from './sidebar.js';
+import { buildNav, initObserver, toggleSidebar, closeSidebar, initSidebar, renderFileList, filterSidebarFiles } from './sidebar.js';
 import { saveFile, loadFile, getLastFileId } from './storage.js';
 import { toast } from './ui.js';
 
@@ -34,14 +34,14 @@ function countPairs(messages) {
 
 function handleFile(file) {
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const jsonStr = e.target.result;
       const data = JSON.parse(jsonStr);
       const pairCount = countPairs(data.messages || []);
-      const id = saveFile(jsonStr, file.name, pairCount);
-      renderFileList();
-      loadData(data, id);
+      const id = await saveFile(jsonStr, file.name, pairCount);
+      await renderFileList();
+      await loadData(data, id);
       // activate in sidebar
       requestAnimationFrame(() => {
         const main = document.querySelector(`.file-item-main[data-id="${id}"]`);
@@ -63,21 +63,23 @@ function handleFile(file) {
 }
 
 // ── LOAD DATA ────────────────────────────────────────────────
-function loadData(data, fileId) {
+async function loadData(data, fileId) {
   const messages = data.messages || [];
   const exp = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ru-RU') : '';
   const pairCount = countPairs(messages);
 
   // get display name from storage
-  const saved = loadFile(fileId);
+  const saved = await loadFile(fileId);
   const displayName = saved ? saved.name : '';
 
   document.getElementById('header-file').innerHTML =
     `<strong>${esc(displayName)}</strong> · ${pairCount} запрос${pairCount===1?'':'ов'}${exp?' · '+exp:''}`;
 
   const searchEl = document.getElementById('search-input');
-  if (searchEl) searchEl.value = '';
-  document.getElementById('search-count').style.display = 'none';
+  if (searchEl) {
+    const q = searchEl.value;
+    filterPairs(q);
+  }
 
   const navData = renderPairs(messages);
   buildNav(navData, fileId);
@@ -85,7 +87,6 @@ function loadData(data, fileId) {
 
   uploadScreen.style.display = 'none';
   document.getElementById('pairs-container').style.display = 'block';
-  document.getElementById('search-bar').style.display = 'flex';
 }
 
 // ── SEARCH ───────────────────────────────────────────────────
@@ -97,24 +98,34 @@ searchInput.addEventListener('input', () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     const q = searchInput.value;
-    const visible = filterPairs(q);
-    if (q) { searchCount.textContent = `${visible} найдено`; searchCount.style.display = 'inline'; }
+    const visiblePairs = filterPairs(q);
+    const visibleFiles = filterSidebarFiles(q);
+    
+    if (q) { 
+      searchCount.textContent = `${visiblePairs} в файле`; 
+      searchCount.style.display = document.getElementById('pairs-container').style.display === 'block' ? 'inline' : 'none'; 
+    }
     else searchCount.style.display = 'none';
   }, 180);
 });
 searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { searchInput.value = ''; filterPairs(''); searchCount.style.display = 'none'; }
+  if (e.key === 'Escape') { 
+    searchInput.value = ''; 
+    filterPairs(''); 
+    filterSidebarFiles('');
+    searchCount.style.display = 'none'; 
+  }
 });
 
 // ── INIT ─────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  initSidebar((data, _name, id) => loadData(data, id));
+window.addEventListener('DOMContentLoaded', async () => {
+  initSidebar(async (data, _name, id) => await loadData(data, id));
 
-  const lastId = getLastFileId();
+  const lastId = await getLastFileId();
   if (lastId) {
-    const saved = loadFile(lastId);
+    const saved = await loadFile(lastId);
     if (saved) {
-      loadData(saved.data, lastId);
+      await loadData(saved.data, lastId);
       requestAnimationFrame(() => {
         const main = document.querySelector(`.file-item-main[data-id="${lastId}"]`);
         if (main) {
