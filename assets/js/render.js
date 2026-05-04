@@ -1,4 +1,5 @@
 import { parseUser, parseAssistant } from './parser.js';
+import { toast } from './ui.js';
 
 let _id = 0;
 
@@ -23,6 +24,17 @@ export function renderPairs(messages) {
     const isError = pair.assistant.toLowerCase().includes('something went wrong');
 
     navData.push({ artist: u.artist_name, theme: u.core_theme, idx });
+
+    if (pairs.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">В этом файле нет генераций</div>
+        </div>
+      `;
+      container.style.display = 'block';
+      return [];
+    }
 
     const el = document.createElement('div');
     el.className = 'pair';
@@ -52,7 +64,9 @@ export function renderPairs(messages) {
                 <span class="prod-arrow">▸</span> Production
               </button>
               <div class="prod-collapse" id="prod-${idx}">
-                ${cb('', a.production, true)}
+                <div class="prod-collapse-inner">
+                  ${cb('', a.production, true)}
+                </div>
               </div>
             ` : ''}
             <div id="lyrics-${idx}">${cb('', a.lyrics, false, true)}</div>
@@ -66,28 +80,36 @@ export function renderPairs(messages) {
       </button>
 
       <div class="card card-user user-collapse" id="user-block-${idx}">
-        <div class="card-header">
-          <span class="role-badge user">User · Parameters</span>
-        </div>
-        <div class="card-body">
-          <div class="sec-title u">Lyrics Settings</div>
-          ${cb('Artist Name',       u.artist_name)}
-          ${cb('Core Theme',        u.core_theme,    true)}
-          ${cb('Mood Tag',          u.mood_tag,       true)}
-          ${cb('Banned Words',      u.banned_words,   true)}
-          ${cb('Length',            u.length)}
-          ${cb('Explicit Language', u.explicit)}
-          <div class="spacer"></div>
-          <div class="sec-title u">Rhyme Controls</div>
-          ${cb('Rhyme Density',     u.rhyme_density)}
-          ${cb('Rhyme Complexity',  u.rhyme_complexity)}
-          ${u.rhyme_placement ? cb('Rhyme Placement',    u.rhyme_placement,  true) : ''}
-          ${u.rhyme_quality   ? cb('Rhyme Quality',      u.rhyme_quality,    true) : ''}
-          ${u.struct_patterns ? cb('Structure Patterns', u.struct_patterns,  true) : ''}
-          ${u.poetic_forms    ? cb('Poetic Forms',       u.poetic_forms,     true) : ''}
-          <div class="spacer"></div>
-          <div class="sec-title u">Prompt</div>
-          ${cb('', u.prompt, false, true)}
+        <div class="user-collapse-inner">
+          <div class="card-header">
+            <span class="role-badge user">User · Parameters</span>
+          </div>
+          <div class="card-body">
+            <div class="field-group">
+              <div class="sec-title u">Lyrics Settings</div>
+              ${cb('Artist Name',       u.artist_name)}
+              ${cb('Core Theme',        u.core_theme,    true)}
+              ${cb('Mood Tag',          u.mood_tag,       true)}
+              ${cb('Banned Words',      u.banned_words,   true)}
+              ${cb('Length',            u.length)}
+              ${cb('Explicit Language', u.explicit)}
+            </div>
+            
+            <div class="field-group">
+              <div class="sec-title u">Rhyme Controls</div>
+              ${cb('Rhyme Density',     u.rhyme_density)}
+              ${cb('Rhyme Complexity',  u.rhyme_complexity)}
+              ${u.rhyme_placement ? cb('Rhyme Placement',    u.rhyme_placement,  true) : ''}
+              ${u.rhyme_quality   ? cb('Rhyme Quality',      u.rhyme_quality,    true) : ''}
+              ${u.struct_patterns ? cb('Structure Patterns', u.struct_patterns,  true) : ''}
+              ${u.poetic_forms    ? cb('Poetic Forms',       u.poetic_forms,     true) : ''}
+            </div>
+            
+            <div class="field-group" style="margin-bottom:0; background:rgba(0,200,255,0.02)">
+              <div class="sec-title u">Prompt</div>
+              ${cb('', u.prompt, false, true)}
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -106,7 +128,7 @@ function cb(label, value, scroll = false, large = false) {
   return `
     <div class="field">
       ${label ? `<div class="field-label">${esc(label)}</div>` : ''}
-      <div class="${cls}" id="${id}">${esc(value)}<button class="cp" onclick="window.__lyra_copy('${id}',this)">copy</button></div>
+      <div class="${cls}" id="${id}">${esc(value)}<button class="cp" data-tooltip="Скопировать" onclick="window.__lyra_copy('${id}',this)">copy</button></div>
     </div>`;
 }
 
@@ -141,10 +163,19 @@ window.__lyra_copy_all = function(idx, btn) {
     if (t) parts.push(label + '\n' + t);
   });
   navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
-    const orig = btn.innerHTML;
+    const orig = btn.dataset.orig || btn.innerHTML;
+    if (!btn.dataset.orig) btn.dataset.orig = orig;
+    
+    if (btn.timer) clearTimeout(btn.timer);
     btn.textContent = '✓ скопировано';
     btn.classList.add('ok');
-    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('ok'); }, 2000);
+    toast('Текст успешно скопирован', 'success');
+    
+    btn.timer = setTimeout(() => { 
+      btn.innerHTML = orig; 
+      btn.classList.remove('ok'); 
+      delete btn.dataset.orig;
+    }, 2000);
   });
 };
 
@@ -154,9 +185,15 @@ window.__lyra_copy = function(id, btn) {
   const clone = el.cloneNode(true);
   clone.querySelectorAll('.cp').forEach(b => b.remove());
   navigator.clipboard.writeText((clone.innerText || clone.textContent).trim()).then(() => {
+    if (btn.timer) clearTimeout(btn.timer);
     btn.textContent = '✓ ok';
     btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('ok'); }, 1800);
+    toast('Скопировано', 'success');
+    
+    btn.timer = setTimeout(() => { 
+      btn.textContent = 'copy'; 
+      btn.classList.remove('ok'); 
+    }, 1800);
   });
 };
 

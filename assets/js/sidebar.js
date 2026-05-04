@@ -1,6 +1,7 @@
 import { getFiles, loadFile, deleteFile, renameFile, moveFileToLib,
          getLibraries, createLibrary, renameLibrary, deleteLibrary } from './storage.js';
 import { filterPairs } from './render.js';
+import { confirmModal, showContextMenu, toast } from './ui.js';
 
 let observer = null;
 let _onFileSelect = null;
@@ -42,7 +43,7 @@ export function renderSidebar() {
         <span class="lib-arrow">▸</span>
         <span class="lib-name" data-lib-id="${lib.id}">${esc(lib.name)}</span>
         <span class="lib-count">${libFiles.length}</span>
-        <button class="lib-del" data-lib-id="${lib.id}" title="Удалить">✕</button>
+        <button class="lib-del" data-tooltip="Удалить" data-lib-id="${lib.id}">✕</button>
       </div>
       <div class="lib-files" id="lib-files-${lib.id}"></div>
     `;
@@ -64,11 +65,25 @@ export function renderSidebar() {
     });
 
     // delete library
-    section.querySelector('.lib-del').addEventListener('click', e => {
+    section.querySelector('.lib-del').addEventListener('click', async e => {
       e.stopPropagation();
-      if (confirm(`Удалить библиотеку "${lib.name}"? Файлы останутся.`)) {
-        deleteLibrary(lib.id); renderSidebar();
+      const ok = await confirmModal('Удалить библиотеку?', `Библиотека "${lib.name}" будет удалена. Файлы останутся в категории "Без библиотеки".`);
+      if (ok) {
+        deleteLibrary(lib.id); 
+        toast('Библиотека удалена');
+        renderSidebar();
       }
+    });
+
+    // Right click Context Menu for Library
+    libHeader.addEventListener('contextmenu', e => {
+      showContextMenu(e, [
+        { label: 'Переименовать', action: () => startRenameLib(lib.id, section.querySelector('.lib-name')) },
+        { label: 'Удалить', danger: true, action: async () => {
+          const ok = await confirmModal('Удалить библиотеку?', `Библиотека "${lib.name}" будет удалена. Файлы останутся.`);
+          if (ok) { deleteLibrary(lib.id); toast('Библиотека удалена'); renderSidebar(); }
+        }}
+      ]);
     });
 
     // drag-over for dropping files
@@ -147,13 +162,13 @@ function buildFileItem(f, libs) {
       </div>
       <div class="file-actions">
         <div class="file-move-wrap">
-          <button class="file-act-btn" title="Переместить" data-id="${f.id}">↗</button>
+          <button class="file-act-btn" data-tooltip="Переместить" data-id="${f.id}">↗</button>
           <div class="move-menu" id="move-menu-${f.id}">
             ${libs.map(l => `<div class="move-item" data-file="${f.id}" data-lib="${l.id}">${esc(l.name)}</div>`).join('')}
             ${f.libId ? `<div class="move-item move-item-uncat" data-file="${f.id}" data-lib="">Без библиотеки</div>` : ''}
           </div>
         </div>
-        <button class="file-del" data-id="${f.id}" title="Удалить">✕</button>
+        <button class="file-del" data-id="${f.id}" data-tooltip="Удалить">✕</button>
       </div>
     </div>
     <div class="file-pairs" id="pairs-nav-${f.id}" style="display:none"></div>
@@ -185,9 +200,34 @@ function buildFileItem(f, libs) {
   });
 
   // delete
-  item.querySelector('.file-del').addEventListener('click', e => {
+  item.querySelector('.file-del').addEventListener('click', async e => {
     e.stopPropagation();
-    if (confirm(`Удалить "${f.name}"?`)) { deleteFile(f.id); if (_activeFileId === f.id) _activeFileId = null; renderSidebar(); }
+    const ok = await confirmModal('Удалить файл?', `Файл "${f.name}" будет удален безвозвратно.`);
+    if (ok) { 
+      deleteFile(f.id); 
+      if (_activeFileId === f.id) _activeFileId = null; 
+      toast('Файл удален');
+      renderSidebar(); 
+    }
+  });
+
+  // context menu
+  mainEl.addEventListener('contextmenu', e => {
+    const moveSubmenu = libs.map(l => ({ 
+      label: `В: ${l.name}`, 
+      action: () => { moveFileToLib(f.id, l.id); toast('Перемещено'); renderSidebar(); }
+    }));
+    if (f.libId) moveSubmenu.push({ label: 'Убрать из библиотеки', action: () => { moveFileToLib(f.id, null); renderSidebar(); } });
+
+    showContextMenu(e, [
+      { label: 'Переименовать', action: () => startRenameFile(f.id, item.querySelector('.file-name')) },
+      ...moveSubmenu,
+      'separator',
+      { label: 'Удалить', danger: true, action: async () => {
+        const ok = await confirmModal('Удалить файл?', `Файл "${f.name}" будет удален.`);
+        if (ok) { deleteFile(f.id); if (_activeFileId === f.id) _activeFileId = null; toast('Файл удален'); renderSidebar(); }
+      }}
+    ]);
   });
 
   // move menu

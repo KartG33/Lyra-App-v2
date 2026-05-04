@@ -1,6 +1,7 @@
 import { renderPairs, filterPairs } from './render.js';
 import { buildNav, initObserver, toggleSidebar, closeSidebar, initSidebar, renderFileList } from './sidebar.js';
 import { saveFile, loadFile, getLastFileId } from './storage.js';
+import { toast } from './ui.js';
 
 // ── PWA ──────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -42,7 +43,7 @@ function handleFile(file) {
       renderFileList();
       loadData(data, id);
       // activate in sidebar
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         const main = document.querySelector(`.file-item-main[data-id="${id}"]`);
         if (main) {
           document.querySelectorAll('.file-item-main').forEach(el => el.classList.remove('active'));
@@ -53,8 +54,10 @@ function handleFile(file) {
             pairsNav.style.display = 'block';
           }
         }
-      }, 60);
-    } catch { alert('Ошибка парсинга JSON'); }
+      });
+    } catch (err) { 
+      toast('Ошибка загрузки или неверный формат JSON', 'error'); 
+    }
   };
   reader.readAsText(file);
 }
@@ -112,14 +115,14 @@ window.addEventListener('DOMContentLoaded', () => {
     const saved = loadFile(lastId);
     if (saved) {
       loadData(saved.data, lastId);
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         const main = document.querySelector(`.file-item-main[data-id="${lastId}"]`);
         if (main) {
           main.classList.add('active');
           const pn = document.getElementById(`pairs-nav-${lastId}`);
           if (pn) pn.style.display = 'block';
         }
-      }, 60);
+      });
     }
   }
 });
