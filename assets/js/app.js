@@ -14,14 +14,14 @@ if ('serviceWorker' in navigator) {
 const fileInput = document.getElementById('file-input');
 document.getElementById('btn-load').addEventListener('click', () => fileInput.click());
 document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFiles(fileInput.files); });
 
 const uploadScreen = document.getElementById('upload-screen');
 uploadScreen.addEventListener('dragover', e => { e.preventDefault(); uploadScreen.classList.add('over'); });
 uploadScreen.addEventListener('dragleave', () => uploadScreen.classList.remove('over'));
 uploadScreen.addEventListener('drop', e => {
   e.preventDefault(); uploadScreen.classList.remove('over');
-  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 
 function countPairs(messages) {
@@ -32,34 +32,57 @@ function countPairs(messages) {
   return n;
 }
 
-function handleFile(file) {
-  const reader = new FileReader();
-  reader.onload = async e => {
+async function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = e => reject(e);
+    reader.readAsText(file);
+  });
+}
+
+async function handleFiles(files) {
+  let lastData = null;
+  let lastId = null;
+  let successCount = 0;
+
+  for (const file of files) {
     try {
-      const jsonStr = e.target.result;
+      const jsonStr = await readFileAsText(file);
       const data = JSON.parse(jsonStr);
       const pairCount = countPairs(data.messages || []);
       const id = await saveFile(jsonStr, file.name, pairCount);
-      await renderFileList();
-      await loadData(data, id);
+      lastData = data;
+      lastId = id;
+      successCount++;
+    } catch (err) {
+      console.error(err);
+      toast(`Ошибка в файле ${file.name}`, 'error');
+    }
+  }
+
+  if (successCount > 0) {
+    await renderFileList();
+    if (lastData && lastId) {
+      await loadData(lastData, lastId);
       // activate in sidebar
       requestAnimationFrame(() => {
-        const main = document.querySelector(`.file-item-main[data-id="${id}"]`);
+        const main = document.querySelector(`.file-item-main[data-id="${lastId}"]`);
         if (main) {
           document.querySelectorAll('.file-item-main').forEach(el => el.classList.remove('active'));
           main.classList.add('active');
-          const pairsNav = document.getElementById(`pairs-nav-${id}`);
+          const pairsNav = document.getElementById(`pairs-nav-${lastId}`);
           if (pairsNav) {
             document.querySelectorAll('.file-pairs').forEach(el => el.style.display = 'none');
             pairsNav.style.display = 'block';
           }
         }
       });
-    } catch (err) { 
-      toast('Ошибка загрузки или неверный формат JSON', 'error'); 
     }
-  };
-  reader.readAsText(file);
+    if (successCount > 1) {
+      toast(`Загружено ${successCount} файлов`, 'success');
+    }
+  }
 }
 
 // ── LOAD DATA ────────────────────────────────────────────────

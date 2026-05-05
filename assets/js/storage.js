@@ -106,7 +106,7 @@ export async function saveFile(jsonStr, _originalFilename, pairCount) {
     finalName = `${name} (${suffix++})`;
   }
   
-  const id = 'f_' + Date.now();
+  const id = 'f_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
   const fileObj = {
     id,
     name: finalName,
