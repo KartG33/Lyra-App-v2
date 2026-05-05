@@ -56,6 +56,7 @@ export function initDB() {
 function processJsonData(jsonData) {
   let dateStr = '';
   let artists = new Set();
+  let themes = new Set();
   let searchParts = [];
   
   try {
@@ -63,7 +64,9 @@ function processJsonData(jsonData) {
     const d = parsed.exportedAt ? new Date(parsed.exportedAt) : new Date();
     const dd = String(d.getDate()).padStart(2,'0');
     const mm = String(d.getMonth()+1).padStart(2,'0');
-    dateStr = `${dd}.${mm}`;
+    const hh = String(d.getHours()).padStart(2,'0');
+    const min = String(d.getMinutes()).padStart(2,'0');
+    dateStr = `${dd}.${mm} ${hh}:${min}`;
     
     if (parsed.messages) {
       for (let i = 0; i < parsed.messages.length; i++) {
@@ -71,6 +74,7 @@ function processJsonData(jsonData) {
         if (m.role === 'user') {
           const u = parseUser(m.content);
           if (u.artist_name) artists.add(u.artist_name);
+          if (u.core_theme) themes.add(u.core_theme);
           searchParts.push(u.artist_name || '');
           searchParts.push(u.core_theme || '');
         } else if (m.role === 'assistant') {
@@ -83,11 +87,30 @@ function processJsonData(jsonData) {
     dateStr = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
   }
 
-  const artistArr = Array.from(artists).filter(Boolean).slice(0, 2);
-  let name = artistArr.length > 0 ? `${artistArr.join(', ')} (${dateStr})` : dateStr;
+  const artistArr = Array.from(artists).filter(Boolean).slice(0, 1);
+  const themeArr = Array.from(themes).filter(Boolean).slice(0, 1);
+  
+  let mainName = '';
+  if (artistArr.length > 0 && themeArr.length > 0) {
+    mainName = `${artistArr[0]} - ${themeArr[0]}`;
+  } else if (themeArr.length > 0) {
+    mainName = themeArr[0];
+  } else if (artistArr.length > 0) {
+    mainName = artistArr[0];
+  } else {
+    mainName = dateStr;
+  }
+
+  // Truncate if too long
+  if (mainName.length > 45) {
+    mainName = mainName.slice(0, 42) + '...';
+  }
+
+  // Add date if not already the only name
+  let finalName = mainName === dateStr ? dateStr : `${mainName} (${dateStr})`;
   
   return { 
-    name, 
+    name: finalName, 
     searchIndex: searchParts.join(' ').toLowerCase() 
   };
 }
