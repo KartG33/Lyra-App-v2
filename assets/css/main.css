@@ -10,7 +10,7 @@
   --border2:     #2a2a48;
   --lyra-purple: #9b5cff;
   --lyra-blue:   #00c8ff;
-  --muted:       #3a3a5c;
+  --muted:       #5a5a8c;
   --text:        #d8d8f0;
   --text2:       #7878a8;
   --sidebar-w:   248px;
@@ -79,6 +79,7 @@ header {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  max-width: 450px;
 }
 .header-file strong { color: var(--text2); }
 
@@ -423,12 +424,12 @@ header {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 5px 10px 5px 22px;
+  padding: 5px 12px 5px 32px;
   cursor: pointer;
   transition: background 0.12s;
   border-left: 2px solid transparent;
 }
-.nav-item:hover { background: var(--surface2); }
+.nav-item:hover { background: rgba(255,255,255,0.03); }
 .nav-item.active {
   background: rgba(0,200,255,0.04);
   border-left-color: var(--lyra-blue);
@@ -1018,4 +1019,23 @@ header {
   #search-bar { margin: 0 -16px 20px; padding-left: 16px; padding-right: 16px; }
   #upload-screen { padding: 40px 24px; margin: 32px auto; }
   .dz-logo { font-size: 28px; }
+}
+
+/* ── DESKTOP TWO-COLUMN ── */
+@media (min-width: 1100px) {
+  .pair-content {
+    display: grid;
+    grid-template-columns: 380px 1fr; /* Fixed width for request, flexible for response */
+    gap: 32px;
+    align-items: start;
+  }
+  .btn-show-request { display: none; }
+  .user-collapse {
+    display: block !important;
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+    margin-bottom: 0 !important;
+  }
+  .card-user { position: sticky; top: calc(var(--header-h) + 20px); }
+  .main { padding: 0 40px 40px; }
 }

@@ -50,65 +50,69 @@ export function renderPairs(messages) {
         ${!isError ? `<button class="btn-copy-all" onclick="window.__lyra_copy_all(${idx},this)">⎘ скопировать всё</button>` : ''}
       </div>
 
-      <div class="card card-assistant">
-        <div class="card-header">
-          <span class="role-badge assistant">Lyrics</span>
-          ${a.modelInfo ? `<span class="model-info-pill">${esc(a.modelInfo)}</span>` : ''}
-        </div>
-        <div class="card-body">
-          ${isError
-            ? `<div class="err-badge">⚠ Ошибка генерации</div>`
-            : `
-            ${a.production ? `
-              <button class="btn-prod-toggle" onclick="window.__lyra_toggle_prod('prod-${idx}',this)">
-                <span class="prod-arrow">▸</span> Production
-              </button>
-              <div class="prod-collapse" id="prod-${idx}">
-                <div class="prod-collapse-inner">
-                  ${cb('', a.production, true)}
-                </div>
+      <div class="pair-content">
+        <!-- USER / REQUEST -->
+        <div class="card card-user user-collapse" id="user-block-${idx}">
+          <div class="user-collapse-inner">
+            <div class="card-header">
+              <span class="role-badge user">Request</span>
+            </div>
+            <div class="card-body">
+              <div class="field-group">
+                <div class="sec-title u">Lyrics Settings</div>
+                ${cb('Artist Name',       u.artist_name)}
+                ${cb('Core Theme',        u.core_theme,    true)}
+                ${cb('Mood Tag',          u.mood_tag,       true)}
+                ${cb('Banned Words',      u.banned_words,   true)}
+                ${cb('Length',            u.length)}
+                ${cb('Explicit Language', u.explicit)}
               </div>
-            ` : ''}
-            <div id="lyrics-${idx}">${cb('', a.lyrics, false, true)}</div>
-          `}
+              
+              <div class="field-group">
+                <div class="sec-title u">Rhyme Controls</div>
+                ${cb('Rhyme Density',     u.rhyme_density)}
+                ${cb('Rhyme Complexity',  u.rhyme_complexity)}
+                ${u.rhyme_placement ? cb('Rhyme Placement',    u.rhyme_placement,  true) : ''}
+                ${u.rhyme_quality   ? cb('Rhyme Quality',      u.rhyme_quality,    true) : ''}
+                ${u.struct_patterns ? cb('Structure Patterns', u.struct_patterns,  true) : ''}
+                ${u.poetic_forms    ? cb('Poetic Forms',       u.poetic_forms,     true) : ''}
+              </div>
+              
+              <div class="field-group" style="margin-bottom:0; background:rgba(0,200,255,0.02)">
+                <div class="sec-title u">Prompt</div>
+                ${cb('', u.prompt, false, true)}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <button class="btn-show-request" onclick="window.__lyra_toggle_user('user-block-${idx}',this)">
-        <span class="req-arrow">↓</span>
-        <span class="req-label">показать запрос</span>
-      </button>
+        <button class="btn-show-request" onclick="window.__lyra_toggle_user('user-block-${idx}',this)">
+          <span class="req-arrow">↓</span>
+          <span class="req-label">показать запрос</span>
+        </button>
 
-      <div class="card card-user user-collapse" id="user-block-${idx}">
-        <div class="user-collapse-inner">
+        <!-- ASSISTANT / RESPONSE -->
+        <div class="card card-assistant">
           <div class="card-header">
-            <span class="role-badge user">User · Parameters</span>
+            <span class="role-badge assistant">Response</span>
+            ${a.modelInfo ? `<span class="model-info-pill">${esc(a.modelInfo)}</span>` : ''}
           </div>
           <div class="card-body">
-            <div class="field-group">
-              <div class="sec-title u">Lyrics Settings</div>
-              ${cb('Artist Name',       u.artist_name)}
-              ${cb('Core Theme',        u.core_theme,    true)}
-              ${cb('Mood Tag',          u.mood_tag,       true)}
-              ${cb('Banned Words',      u.banned_words,   true)}
-              ${cb('Length',            u.length)}
-              ${cb('Explicit Language', u.explicit)}
-            </div>
-            
-            <div class="field-group">
-              <div class="sec-title u">Rhyme Controls</div>
-              ${cb('Rhyme Density',     u.rhyme_density)}
-              ${cb('Rhyme Complexity',  u.rhyme_complexity)}
-              ${u.rhyme_placement ? cb('Rhyme Placement',    u.rhyme_placement,  true) : ''}
-              ${u.rhyme_quality   ? cb('Rhyme Quality',      u.rhyme_quality,    true) : ''}
-              ${u.struct_patterns ? cb('Structure Patterns', u.struct_patterns,  true) : ''}
-              ${u.poetic_forms    ? cb('Poetic Forms',       u.poetic_forms,     true) : ''}
-            </div>
-            
-            <div class="field-group" style="margin-bottom:0; background:rgba(0,200,255,0.02)">
-              <div class="sec-title u">Prompt</div>
-              ${cb('', u.prompt, false, true)}
-            </div>
+            ${isError
+              ? `<div class="err-badge">⚠ Ошибка генерации</div>`
+              : `
+              ${a.production ? `
+                <button class="btn-prod-toggle" onclick="window.__lyra_toggle_prod('prod-${idx}',this)">
+                  <span class="prod-arrow">▸</span> Production
+                </button>
+                <div class="prod-collapse" id="prod-${idx}">
+                  <div class="prod-collapse-inner">
+                    ${cb('', a.production, true)}
+                  </div>
+                </div>
+              ` : ''}
+              <div id="lyrics-${idx}">${cb('', a.lyrics, false, true)}</div>
+            `}
           </div>
         </div>
       </div>

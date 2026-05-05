@@ -147,12 +147,13 @@ export function buildNav(pairs, fileId) {
 
   pairsNav.innerHTML = filterHTML;
 
-  pairs.forEach(({ artist, idx }) => {
+  pairs.forEach(({ artist, theme, idx }) => {
     const navItem = document.createElement('div');
     navItem.className = 'nav-item';
     navItem.dataset.idx = idx;
     navItem.dataset.artist = (artist || '').toLowerCase();
-    navItem.innerHTML = `<span class="nav-num">#${idx+1}</span><span class="nav-artist">${esc(artist||'—')}</span>`;
+    const label = theme ? theme : (artist || '—');
+    navItem.innerHTML = `<span class="nav-num">#${idx+1}</span><span class="nav-artist">${esc(label)}</span>`;
     navItem.addEventListener('click', () => {
       document.getElementById(`pair-${idx}`)?.scrollIntoView({ behavior: 'smooth' });
       closeSidebar();
