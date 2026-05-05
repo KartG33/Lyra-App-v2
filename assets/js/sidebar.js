@@ -192,15 +192,30 @@ export function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   const bg = document.getElementById('burger');
   const ov = document.getElementById('overlay');
-  const open = sb.classList.toggle('open');
-  bg.classList.toggle('open', open);
-  ov.classList.toggle('visible', open);
+  const isMobile = window.innerWidth <= 720;
+
+  if (isMobile) {
+    const open = sb.classList.toggle('open');
+    bg.classList.toggle('open', open);
+    ov.classList.toggle('visible', open);
+    sb.classList.remove('collapsed');
+  } else {
+    const collapsed = sb.classList.toggle('collapsed');
+    bg.classList.toggle('open', !collapsed);
+  }
 }
 
 export function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('burger').classList.remove('open');
-  document.getElementById('overlay').classList.remove('visible');
+  const sb = document.getElementById('sidebar');
+  const bg = document.getElementById('burger');
+  const ov = document.getElementById('overlay');
+  
+  sb.classList.remove('open');
+  bg.classList.remove('open');
+  ov.classList.remove('visible');
+  
+  // if on desktop and it was collapsed, we usually don't want to auto-uncollapse on click elsewhere
+  // but if it's mobile, we definitely want to hide the overlay
 }
 
 export function filterSidebarFiles(q) {

@@ -104,7 +104,7 @@ header {
 
 /* ── BURGER ── */
 .burger {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 4px;
   background: none;
@@ -112,6 +112,7 @@ header {
   cursor: pointer;
   padding: 6px;
   flex-shrink: 0;
+  z-index: 210;
 }
 .burger span {
   display: block;
@@ -141,8 +142,9 @@ header {
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 100;
-  transition: transform 0.25s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.sidebar.collapsed { transform: translateX(-100%); }
 
 .sidebar-inner { padding: 10px 0 32px; }
 
@@ -471,7 +473,9 @@ header {
   flex: 1;
   padding: 0 32px 40px;
   min-width: 0;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.sidebar.collapsed + .main { margin-left: 0; }
 
 /* ── SEARCH BAR ── */
 #search-bar {
