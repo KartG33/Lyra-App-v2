@@ -641,6 +641,8 @@ header {
 
 /* ── CARD ── */
 .card {
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-radius: 16px;
   border: 1px solid var(--border);
@@ -691,7 +693,12 @@ header {
   opacity: 0.7;
 }
 
-.card-body { padding: 24px; }
+.card-body { 
+  padding: 24px; 
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 /* ── PRODUCTION ── */
 .btn-prod-toggle {
@@ -1072,7 +1079,7 @@ header {
     display: grid;
     grid-template-columns: minmax(320px, 420px) 1fr;
     gap: 40px;
-    align-items: start;
+    align-items: stretch;
   }
   .btn-show-request { display: none; }
   .user-collapse {
@@ -1080,6 +1087,7 @@ header {
     grid-template-rows: 1fr !important;
     opacity: 1 !important;
     margin-bottom: 0 !important;
+    height: 100%;
   }
   .user-collapse-inner { overflow: visible; }
   .card-user { position: sticky; top: calc(var(--header-h) + 24px); }
