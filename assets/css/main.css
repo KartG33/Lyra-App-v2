@@ -1092,4 +1092,26 @@ header {
   .user-collapse-inner { overflow: visible; }
   .card-user { position: sticky; top: calc(var(--header-h) + 24px); }
   .main { padding: 0 48px 60px; }
+  
+  /* Internal stretch for Assistant cards */
+  .card-assistant .card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-assistant .card-body > div[id^="lyrics-"] {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-assistant .card-body > div[id^="lyrics-"] .field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+  .card-assistant .card-body > div[id^="lyrics-"] .cb {
+    flex: 1;
+    max-height: none;
+  }
 }
