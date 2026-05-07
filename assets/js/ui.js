@@ -2,9 +2,20 @@ export function toast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
+  const icons = {
+    success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+    info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`
+  };
+
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.textContent = message;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="display:flex;opacity:0.8">${icons[type] || icons.info}</span>
+      <span>${message}</span>
+    </div>
+  `;
 
   container.appendChild(el);
 
@@ -15,8 +26,8 @@ export function toast(message, type = 'info') {
 
   setTimeout(() => {
     el.classList.remove('show');
-    setTimeout(() => el.remove(), 300); // Wait for transition
-  }, 3000);
+    setTimeout(() => el.remove(), 400); // Wait for transition
+  }, 3500);
 }
 
 export function confirmModal(title, text) {

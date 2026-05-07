@@ -129,10 +129,18 @@ function cb(label, value, scroll = false, large = false) {
   if (!value && value !== 0) return '';
   const id = 'cb' + (++_id);
   const cls = 'cb' + (large ? ' scroll-lg' : scroll ? ' scroll' : '');
+  const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+  const check = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
   return `
     <div class="field">
       ${label ? `<div class="field-label">${esc(label)}</div>` : ''}
-      <div class="${cls}" id="${id}">${esc(value)}<button class="cp" data-tooltip="Скопировать" onclick="window.__lyra_copy('${id}',this)">copy</button></div>
+      <div class="${cls}" id="${id}">
+        ${esc(value)}
+        <button class="cp" data-tooltip="Копировать" onclick="window.__lyra_copy('${id}',this)">
+          ${icon}
+        </button>
+      </div>
     </div>`;
 }
 
@@ -171,7 +179,7 @@ window.__lyra_copy_all = function(idx, btn) {
     if (!btn.dataset.orig) btn.dataset.orig = orig;
     
     if (btn.timer) clearTimeout(btn.timer);
-    btn.textContent = '✓ скопировано';
+    btn.innerHTML = '✓ скопировано';
     btn.classList.add('ok');
     toast('Текст успешно скопирован', 'success');
     
@@ -190,14 +198,18 @@ window.__lyra_copy = function(id, btn) {
   clone.querySelectorAll('.cp').forEach(b => b.remove());
   navigator.clipboard.writeText((clone.innerText || clone.textContent).trim()).then(() => {
     if (btn.timer) clearTimeout(btn.timer);
-    btn.textContent = '✓ ok';
+    
+    const orig = btn.innerHTML;
+    const check = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    
+    btn.innerHTML = check;
     btn.classList.add('ok');
     toast('Скопировано', 'success');
     
     btn.timer = setTimeout(() => { 
-      btn.textContent = 'copy'; 
+      btn.innerHTML = orig; 
       btn.classList.remove('ok'); 
-    }, 1800);
+    }, 2000);
   });
 };
 
