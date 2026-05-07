@@ -47,7 +47,10 @@ export function renderPairs(messages) {
     el.innerHTML = `
       <div class="pair-index">
         <span>— #${idx + 1} · ${esc(u.artist_name || '—')} —</span>
-        ${!isError ? `<button class="btn-copy-all" onclick="window.__lyra_copy_all(${idx},this)">⎘ скопировать всё</button>` : ''}
+        ${!isError ? `<button class="btn-copy-all" onclick="window.__lyra_copy_all(${idx},this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-right:6px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          скопировать всё
+        </button>` : ''}
       </div>
 
       <div class="pair-content">
@@ -55,7 +58,7 @@ export function renderPairs(messages) {
         <div class="card card-user user-collapse" id="user-block-${idx}">
           <div class="user-collapse-inner">
             <div class="card-header">
-              <span class="role-badge user">Request</span>
+              <span class="role-badge user">Prompt</span>
             </div>
             <div class="card-body">
               <div class="field-group">
@@ -88,13 +91,13 @@ export function renderPairs(messages) {
 
         <button class="btn-show-request" onclick="window.__lyra_toggle_user('user-block-${idx}',this)">
           <span class="req-arrow">↓</span>
-          <span class="req-label">показать запрос</span>
+          <span class="req-label">показать промпт</span>
         </button>
 
         <!-- ASSISTANT / RESPONSE -->
         <div class="card card-assistant">
           <div class="card-header">
-            <span class="role-badge assistant">Response</span>
+            <span class="role-badge assistant">Lyrics</span>
             ${a.modelInfo ? `<span class="model-info-pill">${esc(a.modelInfo)}</span>` : ''}
           </div>
           <div class="card-body">
@@ -130,12 +133,14 @@ function cb(label, value, scroll = false, large = false) {
   const id = 'cb' + (++_id);
   const cls = 'cb' + (large ? ' scroll-lg' : scroll ? ' scroll' : '');
   const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-  const check = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
   return `
     <div class="field">
-      ${label ? `<div class="field-label">${esc(label)}</div>` : ''}
-      <div class="${cls}" id="${id}">${esc(value)}<button class="cp" data-tooltip="Копировать" onclick="window.__lyra_copy('${id}',this)">${icon}</button></div>
+      <div class="field-header">
+        ${label ? `<div class="field-label">${esc(label)}</div>` : '<div></div>'}
+        <button class="cp" data-tooltip="Копировать" onclick="window.__lyra_copy('${id}',this)">${icon}</button>
+      </div>
+      <div class="${cls}" id="${id}">${esc(value)}</div>
     </div>`;
 }
 
@@ -147,7 +152,7 @@ window.__lyra_toggle_user = function(blockId, btn) {
   const block = document.getElementById(blockId);
   const isOpen = block.classList.toggle('open');
   btn.querySelector('.req-arrow').textContent = isOpen ? '↑' : '↓';
-  btn.querySelector('.req-label').textContent = isOpen ? 'скрыть запрос' : 'показать запрос';
+  btn.querySelector('.req-label').textContent = isOpen ? 'скрыть промпт' : 'показать промпт';
   btn.classList.toggle('active', isOpen);
 };
 
