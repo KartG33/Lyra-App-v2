@@ -135,12 +135,7 @@ function cb(label, value, scroll = false, large = false) {
   return `
     <div class="field">
       ${label ? `<div class="field-label">${esc(label)}</div>` : ''}
-      <div class="${cls}" id="${id}">
-        ${esc(value)}
-        <button class="cp" data-tooltip="Копировать" onclick="window.__lyra_copy('${id}',this)">
-          ${icon}
-        </button>
-      </div>
+      <div class="${cls}" id="${id}">${esc(value)}<button class="cp" data-tooltip="Копировать" onclick="window.__lyra_copy('${id}',this)">${icon}</button></div>
     </div>`;
 }
 

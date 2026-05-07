@@ -818,18 +818,21 @@ header {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 8px 14px;
   font-family: 'DM Mono', monospace;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   transition: all 0.2s;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
 .cb:hover { border-color: var(--border2); background: rgba(0, 0, 0, 0.3); }
-.cb.scroll    { max-height: 200px; overflow-y: auto; }
-.cb.scroll-lg { max-height: 600px; overflow-y: auto; }
+.cb.scroll    { max-height: 200px; overflow-y: auto; display: block; padding: 12px 16px; }
+.cb.scroll-lg { max-height: 600px; overflow-y: auto; display: block; padding: 12px 16px; }
 
 .cp {
   position: absolute;
